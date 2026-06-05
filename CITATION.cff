@@ -81,6 +81,12 @@ authors:
   - given-names: David
     family-names: Coeurjolly
     affiliation: CNRS, LIRIS
+  - given-names: Thibaut
+    family-names: Germain
+    affiliation: Ecole Polytechnique
+  - given-names: Sienna
+    family-names: O'Shea
+    affiliation: Ecole Polytechnique
 
 identifiers:
   - type: url

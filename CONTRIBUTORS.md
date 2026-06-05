@@ -59,6 +59,8 @@ The contributors to this library are:
 * [Julie Delon](https://judelo.github.io/) (GMM OT)
 * [Samuel Boïté](https://samuelbx.github.io/) (GMM OT)
 * [Nathan Neike](https://github.com/nathanneike) (Sparse EMD solver)
+* [Thibaut Germain](https://thibaut-germain.github.io) (SGOT)
+* Sienna O'Shea (SGOT)
 
 
 ## Acknowledgments

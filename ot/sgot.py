@@ -124,7 +124,7 @@ def _delta_matrix_1d(Rs, Ls, Rt, Lt, nx=None, eps=1e-12):
     Ltn = _normalize_columns(Lt, nx=nx, eps=eps)
 
     Cr = nx.dot(nx.conj(Rsn).T, Rtn)
-    Cl = nx.dot(nx.conj(Lsn).T, Ltn)
+    Cl = nx.dot(Lsn.T, nx.conj(Ltn))
 
     delta = nx.abs(Cr * Cl)
     delta = nx.clip(delta, 0.0, 1.0)
