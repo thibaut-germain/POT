@@ -87,11 +87,18 @@ authors:
   - given-names: Sienna
     family-names: O'Shea
     affiliation: Ecole Polytechnique
-
+  - given-names: Marco
+    family-names: Corneli
+    affiliation: Université Côte d'Azur
+  - given-names: Ferdinand
+    family-names: Genans
+    affiliation: Sorbonne Université, LPSM, CNRS
 identifiers:
   - type: url
     value: 'https://github.com/PythonOT/POT'
     description: Code
+  - type: doi
+    value: 10.5281/zenodo.17161062
 repository-code: 'https://github.com/PythonOT/POT'
 url: 'https://pythonot.github.io/'
 keywords:
@@ -101,4 +108,4 @@ keywords:
   - wasserstein
   - gromov-wasserstein
 license: MIT
-version: 0.9.5
+version: 0.9.7
