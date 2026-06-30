@@ -739,16 +739,16 @@ def test_solve_sample_geomloss(nx, metric):
         xb, yb, ab, bb, reg=1, lazy=True, method="geomloss_tensorized"
     )
     np.testing.assert_allclose(
-        nx.to_numpy(sol1.lazy_plan[:]),
-        nx.to_numpy(sol.lazy_plan[:]),
+        nx.to_numpy(sol1.plan),
+        nx.to_numpy(sol.plan),
         rtol=1e-5,
         atol=1e-5,
     )
 
     sol1 = ot.solve_sample(xb, yb, ab, bb, reg=1, lazy=True, method="geomloss_online")
     np.testing.assert_allclose(
-        nx.to_numpy(sol1.lazy_plan[:]),
-        nx.to_numpy(sol.lazy_plan[:]),
+        nx.to_numpy(sol1.plan),
+        nx.to_numpy(sol.plan),
         rtol=1e-5,
         atol=1e-5,
     )
@@ -757,16 +757,16 @@ def test_solve_sample_geomloss(nx, metric):
         xb, yb, ab, bb, reg=1, lazy=True, method="geomloss_multiscale"
     )
     np.testing.assert_allclose(
-        nx.to_numpy(sol1.lazy_plan[:]),
-        nx.to_numpy(sol.lazy_plan[:]),
+        nx.to_numpy(sol1.plan),
+        nx.to_numpy(sol.plan),
         rtol=1e-5,
         atol=1e-5,
     )
 
     sol1 = ot.solve_sample(xb, yb, ab, bb, reg=1, lazy=True, method="geomloss")
     np.testing.assert_allclose(
-        nx.to_numpy(sol1.lazy_plan[:]),
-        nx.to_numpy(sol.lazy_plan[:]),
+        nx.to_numpy(sol1.plan),
+        nx.to_numpy(sol.plan),
         rtol=1e-5,
         atol=1e-5,
     )

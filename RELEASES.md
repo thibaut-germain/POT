@@ -35,6 +35,7 @@ This new release adds support for sparse cost matrices and a new lazy exact OT s
 - Wrapper for barycenter solvers with free support `ot.solvers.bary_free_support` (PR #730)
 - Build wheels on ubuntu ARM to avoid QEMU emulation (PR #818)
 - Add new methods to compute the linear transport map and the related 2-Wasserstein distance betweeen high-dimensional (HD) Gaussian distributions as described in [88], implemented in  `ot.gaussian.bures_wasserstein_mapping_hd` and `ot.gaussian.bures_wasserstein_distance_hd`, respectively. Two additional methods estimate the same quantities from the source and destination observed data and are implemented in `ot.gaussian.empirical_bures_wasserstein_mapping_hd` and `ot.gaussian.empirical_bures_wasserstein_distance_hd`, respectively (PR #814)
+- Update the geomloss wrapper to the new version and API (PR #826)
 - Fix docstrings for `lowrank_gromov_wasserstein_samples` and `lowrank_sinkhorn` (PR #823)
 - Reorganize all tests per backend (PR #828)
 
@@ -58,6 +59,7 @@ This new release adds support for sparse cost matrices and a new lazy exact OT s
 - Fix entropic regularization in `gcg`(PR #817, Issue #758)
 - Fix documentation build on master with submodules (PR #818)
 - Fix failing test for unbalanced solver with generic regularization (PR #824)
+- Fix docstrings for `lowrank_gromov_wasserstein_samples` and `lowrank_sinkhorn` (PR #823)   
 
 
 ## 0.9.6.post1

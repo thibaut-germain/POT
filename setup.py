@@ -129,6 +129,7 @@ setup(
         "dr": ["scikit-learn", "pymanopt", "autograd"],
         "gnn": ["torch", "torch_geometric"],
         "plot": ["matplotlib"],
+        "geomloss": ["geomloss"],
         "doc": [
             "sphinx",
             "sphinx-rtd-theme",
@@ -152,6 +153,7 @@ setup(
             "autograd",
             "torch_geometric",
             "matplotlib",
+            "geomloss",
         ],
     },
     python_requires=">=3.7",

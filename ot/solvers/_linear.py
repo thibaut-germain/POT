@@ -15,14 +15,15 @@ from ..unbalanced import mm_unbalanced, sinkhorn_knopp_unbalanced, lbfgsb_unbala
 from ..bregman import (
     sinkhorn_log,
     empirical_sinkhorn2,
-    empirical_sinkhorn2_geomloss,
     empirical_sinkhorn_nystroem2,
+    old_geomloss,
 )
 from ..smooth import smooth_ot_dual
 from ..gaussian import empirical_bures_wasserstein_distance
 from ..factored import factored_optimal_transport
 from ..lowrank import lowrank_sinkhorn
 from ..optim import cg
+from warnings import warn
 
 
 lst_method_lazy = [
@@ -790,17 +791,9 @@ def solve_sample(
         # automatic solver
         res = ot.solve_sample(xa, xb, a, b, reg=1.0, method='geomloss')
 
-        # force O(n) memory efficient solver
-        res = ot.solve_sample(xa, xb, a, b, reg=1.0, method='geomloss_online')
-
-        # force pre-computed cost matrix
-        res = ot.solve_sample(xa, xb, a, b, reg=1.0, method='geomloss_tensorized')
-
-        # use multiscale solver
-        res = ot.solve_sample(xa, xb, a, b, reg=1.0, method='geomloss_multiscale')
-
-        # One can play with speed (small scaling factor) and precision (scaling close to 1)
-        res = ot.solve_sample(xa, xb, a, b, reg=1.0, method='geomloss', scaling=0.5)
+    .. warning::
+        The geomloss solver is a thin wrapper around the `geomloss.ot.solve_sample`
+        function. The API is still under development and some features might be missing. Please refer to the `geomloss` documentation for more information.
 
     - **Quadratic regularized OT [17]** (when ``reg!=None`` and ``reg_type="L2"``):
 
@@ -1175,29 +1168,36 @@ def solve_sample(
                     backend = "online"
                 else:
                     backend = "tensorized"
+            if lazy0 is None:
+                warn(
+                    f"geomloss backend is set to '{backend}' but is not yet supported by unified geomloss API yet."
+                )
 
-            value, log = empirical_sinkhorn2_geomloss(
-                X_a,
-                X_b,
-                reg=reg,
-                a=a,
-                b=b,
-                metric=metric,
-                log=True,
-                verbose=verbose,
-                scaling=scaling,
-                backend=backend,
-            )
+            if old_geomloss:  # old wrapper for old geomloss versions
+                raise NotImplementedError(
+                    "geomloss version >= 0.3.1 required for ot.solve_sample() geomloss backend."
+                )
 
-            lazy_plan = log["lazy_plan"]
-            if not lazy0:  # store plan if not lazy
-                plan = lazy_plan[:]
+            else:  # new geomloss wrapper
+                import geomloss.ot as got
 
-            # return scaled potentials (to be consistent with other solvers)
-            potentials = (
-                log["f"] / (lazy_plan.blur**2),
-                log["g"] / (lazy_plan.blur**2),
-            )
+                if max_iter is None:
+                    max_iter = 1000
+
+                res = got.solve_sample(
+                    X_a,
+                    X_b,
+                    a=a,
+                    b=b,
+                    reg=reg,
+                    cost=metric,
+                    unbalanced=unbalanced,
+                    unbalanced_type=unbalanced_type,
+                    max_iter=max_iter,
+                    tol=tol,
+                )
+                res.value_linear = None
+                return res
 
         elif reg is None or reg == 0:  # exact OT
             if unbalanced is None:  # balanced EMD solver not available for lazy
@@ -1210,7 +1210,7 @@ def solve_sample(
             else:
                 raise (
                     NotImplementedError(
-                        'Non regularized solver with unbalanced_type="{}" not implemented'.format(
+                        'Non regularized lazy solver with unbalanced_type="{}" not implemented'.format(
                             unbalanced_type
                         )
                     )
