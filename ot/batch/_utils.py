@@ -288,3 +288,141 @@ def bregman_log_projection_batch(
     log_potentials = (u, v)
 
     return {"T": T, "log_T": log_T, "n_iters": n_iters, "potentials": log_potentials}
+
+
+def proximal_bregman_log_plan_batch(
+    C,
+    a=None,
+    b=None,
+    nx=None,
+    reg=1e-1,
+    max_iter=10000,
+    tol=1e-5,
+    inner_iter=1,
+    grad="detach",
+):
+    r"""
+    Returns optimal transport plans for a batch of cost matrices :math:`\mathbf{C}` using a Bregman divergence based proximal point method :ref:`[1] <references-OT-bregman-proximal-point>`.
+
+    This function solves the following optimization problem:
+
+    .. math::
+        \begin{aligned}
+            \mathbf{T} = \mathop{\arg \min}_\mathbf{T} \quad & \langle \mathbf{T}, \mathbf{C} \rangle_F \\
+            \text{s.t.} \quad & \mathbf{T} \mathbf{1} = \mathbf{a} \\
+            & \mathbf{T}^T \mathbf{1} = \mathbf{b} \\
+            & \mathbf{T} \geq 0
+        \end{aligned}
+
+    The optimal transport plans are computed iteratively with a proximal point method based on a Bregman divergence where each iteration involves solving a Bregman projection problem: 
+    
+    .. math::
+        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{reg} * \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + \textit{reg} * \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
+    
+    Denoting :math:`\mathbf{K}^{(k)} =  - \mathbf{C} / \textit{reg} + \log \mathbf{T}^{(k)}`, the affinity matrix at iteration :math:`k`, the Bregman projection problem is solved in the log-domain with a finite number of inner iterations :math:`\text{inner\_iter}`, i.e., the dual variables :math:`\mathbf{u}` and :math:`\mathbf{v}` are updated as follows:
+
+    .. math::
+        \mathbf{u}^{(i+1)} = \log(\mathbf{a}) - \text{LSE}(\mathbf{K}^{(k)} + \mathbf{v}^{(i)})
+
+        \mathbf{v}^{(i+1)} = \log(\mathbf{b}) - \text{LSE}((\mathbf{K}^{(k)})^T + \mathbf{u}^{(i)})
+
+    where LSE denotes the log-sum-exp operation.
+
+    Parameters
+    ----------
+    C : array-like, shape (B, n, m)
+        Cost matrix for each problem in the batch.
+    a : array-like, shape (B, n), optional
+        Source distribution for each problem. If None, uniform distribution is used.
+    b : array-like, shape (B, m), optional
+        Target distribution for each problem. If None, uniform distribution is used.
+    nx : backend object, optional
+        Numerical backend to use for computations. If None, the default backend is used.
+    max_iter : int, optional
+        Maximum number of iterations.
+    inner_iter : int, optional
+        Number of inner iterations for updating the dual variables u and v.
+    tol : float, optional
+        Tolerance for convergence. The solver stops when the maximum change in
+        the dual variables is below this value.
+    grad : str, optional
+        Gradient computation mode: 'detach', 'autodiff', or 'last_step'.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+        - 'T' : array-like, shape (B, n, m)
+            Optimal transport plan for each problem.
+        - 'log_T' : array-like, shape (B, n, m)
+            Logarithm of the optimal transport plan for each problem.
+        - 'potentials' : tuple of array-like, shapes ((B, n), (B, m))
+            Log-scaling factors (u, v).
+        - 'n_iters' : int
+            Number of iterations performed.
+
+    Example
+    --------
+    >>> import numpy as np
+    >>> from ot.batch import proximal_bregman_log_plan_batch
+    >>> # Create batch of affinity matrices
+    >>> C = np.random.rand(5, 10, 15)  # 5 problems, 10x15 cost matrices
+    >>> result = proximal_bregman_log_plan_batch(C)
+    >>> T = result['T']  # Shape (5, 10, 15)
+
+    .. _references-OT-bregman-proximal-point:
+    Reference
+    ----------
+    .. [1] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
+    A fast proximal point method for computing exact wasserstein distance.
+    In Uncertainty in artificial intelligence (pp. 433-453). PMLR.
+    """
+
+    if nx is None:
+        nx = get_backend(a, b, C)
+
+    B, n, m = C.shape
+
+    if a is None:
+        a = nx.ones((B, n)) / n
+    if b is None:
+        b = nx.ones((B, m)) / m
+
+    u = nx.zeros((B, n), type_as=C)
+    v = nx.zeros((B, m), type_as=C)
+
+    K = -C / reg
+    loga = nx.log(a)
+    logb = nx.log(b)
+
+    if grad == "detach":
+        K = nx.detach(K)
+    elif grad == "last_step":
+        K_, K = K.clone(), nx.detach(K)
+
+    log_T = nx.zeros(C.shape, type_as=C)
+    for n_iters in range(max_iter):
+        K_proj = log_T + K
+        for _ in range(inner_iter):
+            u = loga - nx.logsumexp(K_proj + v[:, None, :], axis=2)
+            v = logb - nx.logsumexp(K_proj + u[:, :, None], axis=1)
+        log_T = K_proj + u[:, :, None] + v[:, None, :]
+
+        # Check convergence once every 10 iterations
+        if n_iters % 10 == 0:
+            T = nx.exp(log_T)
+            marginal = nx.sum(T, axis=2)
+            err = nx.max(norm_batch(marginal - a))
+            if err < tol:
+                break
+
+    if grad == "last_step":
+        K_proj = log_T + K_
+        for _ in range(inner_iter):
+            u = loga - nx.logsumexp(K_proj + v[:, None, :], axis=2)
+            v = logb - nx.logsumexp(K_proj + u[:, :, None], axis=1)
+        log_T = K_proj + u[:, :, None] + v[:, None, :]
+    T = nx.exp(log_T)
+    log_potentials = (u, v)
+
+    return {"T": T, "log_T": log_T, "n_iters": n_iters, "potentials": log_potentials}
