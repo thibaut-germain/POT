@@ -274,12 +274,8 @@ print("Y shape:", Y.shape)
 # Processing Systems, 35, pp.4017-4031.
 
 
-def estimator(X, Y, rank=4):
-    # X: (n_samples, n_features)
-    # Y: (n_samples, n_features)
-
-    # estimate operator
-    cxx = X.T @ X
+def estimator(X, Y, rank=4, eps=1e-8):
+    cxx = X.T @ X + eps * np.eye(X.shape[1])
     U, S, Vt = np.linalg.svd(cxx)
     S_inv = np.divide(1, S, out=np.zeros_like(S), where=S != 0)
     cxx_inv_half = Vt.T @ np.diag(np.sqrt(S_inv)) @ U.T
@@ -417,6 +413,24 @@ print(f"Second mode: frequency: {recovered_freqs[1]:.2f} Hz -- decay: {decay[1]:
 # relative geometry of their eigenspaces.
 
 # %%
+# A wider delay window for the SGOT experiments below
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# The window of length 4 used above is enough to identify a single reference
+# operator, but the experiments below also probe signals whose two modes
+# nearly coincide in frequency (e.g. :math:`\omega_2'\to\omega_1`). Telling
+# such near-degenerate modes apart requires the delay embedding to span
+# enough time to "see" their differing decay, so we re-embed the reference
+# signal with a longer window before running the sweeps.
+
+sgot_window = 10
+Z = augment(traj_0, sgot_window)
+_, B_0_spec_sgot = estimator(Z[:-1], Z[1:])
+D_0_sgot = np.log(B_0_spec_sgot["eig_val"]) * fs
+L_0_sgot = B_0_spec_sgot["eig_vec_left"]
+R_0_sgot = B_0_spec_sgot["eig_vec_right"]
+
+# %%
 # SGOT distance versus rotation angle
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
@@ -438,13 +452,15 @@ thetas = np.linspace(0, np.pi / 2, 51)
 rotation_scores = []
 
 for theta in thetas:
-    Z = augment(generate_data(time, tau_0, freq_0, theta), 4)
+    Z = augment(generate_data(time, tau_0, freq_0, theta), sgot_window)
     B, B_spec = estimator(Z[:-1], Z[1:])
     D = np.log(B_spec["eig_val"]) * fs
     L = B_spec["eig_vec_left"]
     R = B_spec["eig_vec_right"]
     rotation_scores.append(
-        sgot_metric(D_0, R_0, L_0, D, R, L, eta=0.9, grassmann_metric="chordal")
+        sgot_metric(
+            D_0_sgot, R_0_sgot, L_0_sgot, D, R, L, eta=0.9, grassmann_metric="chordal"
+        )
     )
 
 fig, ax = plt.subplots(figsize=(7, 4))
@@ -465,21 +481,27 @@ styles = {"chordal": "-", "geodesic": "--", "procrustes": "-.", "martin": ":"}
 rotation_results = {m: [] for m in metrics}
 
 for theta in thetas:
-    Z = augment(generate_data(time, tau_0, freq_0, theta), 4)
+    Z = augment(generate_data(time, tau_0, freq_0, theta), sgot_window)
     B, B_spec = estimator(Z[:-1], Z[1:])
     D = np.log(B_spec["eig_val"]) * fs
     L = B_spec["eig_vec_left"]
     R = B_spec["eig_vec_right"]
     for m in metrics:
         rotation_results[m].append(
-            sgot_metric(D_0, R_0, L_0, D, R, L, eta=0.9, grassmann_metric=m)
+            sgot_metric(
+                D_0_sgot, R_0_sgot, L_0_sgot, D, R, L, eta=0.9, grassmann_metric=m
+            )
         )
 
 fig, ax = plt.subplots(figsize=(7, 4))
 for m in metrics:
     ax.plot(thetas, rotation_results[m], styles[m], label=m, linewidth=1.8)
 ax.axvline(
-    theta_0, color="gray", linestyle="--", linewidth=0.8, label=r"$\theta_0 = \pi/4$"
+    theta_0,
+    color="gray",
+    linestyle="--",
+    linewidth=0.8,
+    label=r"$\theta_0 = \pi/4$ (reference)",
 )
 ax.set_xlabel(r"Rotation angle $\theta$ (rad)")
 ax.set_ylabel(r"$d_S$")
@@ -510,21 +532,29 @@ omegas = np.linspace(0.5, 3.0, 21)
 frequency_scores = {m: [] for m in metrics}
 
 for omega in omegas:
-    Z = augment(generate_data(time, tau_0, np.array([freq_0[0], omega]), theta_0), 4)
+    Z = augment(
+        generate_data(time, tau_0, np.array([freq_0[0], omega]), theta_0), sgot_window
+    )
     B, B_spec = estimator(Z[:-1], Z[1:])
     D = np.log(B_spec["eig_val"]) * fs
     L = B_spec["eig_vec_left"]
     R = B_spec["eig_vec_right"]
     for m in metrics:
         frequency_scores[m].append(
-            sgot_metric(D_0, R_0, L_0, D, R, L, eta=0.9, grassmann_metric=m)
+            sgot_metric(
+                D_0_sgot, R_0_sgot, L_0_sgot, D, R, L, eta=0.9, grassmann_metric=m
+            )
         )
 
 fig, ax = plt.subplots(figsize=(7, 4))
 for m in metrics:
     ax.plot(omegas, frequency_scores[m], styles[m], label=m, linewidth=1.8)
 ax.axvline(
-    freq_0[1], color="gray", linestyle="--", linewidth=0.8, label=r"$\omega_2 = 2.0$ Hz"
+    freq_0[1],
+    color="gray",
+    linestyle="--",
+    linewidth=0.8,
+    label=r"$\omega_2 = 2.0$ Hz (reference)",
 )
 ax.set_xlabel(r"Frequency $\omega_2'$ (Hz)")
 ax.set_ylabel(r"$d_S$")
@@ -555,14 +585,16 @@ taus = np.linspace(0.1, 3.0, 21)
 decay_scores = {m: [] for m in metrics}
 
 for tau in taus:
-    Z = augment(generate_data(time, np.array([tau, tau]), freq_0, theta_0), 4)
+    Z = augment(generate_data(time, np.array([tau, tau]), freq_0, theta_0), sgot_window)
     B, B_spec = estimator(Z[:-1], Z[1:])
     D = np.log(B_spec["eig_val"]) * fs
     L = B_spec["eig_vec_left"]
     R = B_spec["eig_vec_right"]
     for m in metrics:
         decay_scores[m].append(
-            sgot_metric(D_0, R_0, L_0, D, R, L, eta=0.9, grassmann_metric=m)
+            sgot_metric(
+                D_0_sgot, R_0_sgot, L_0_sgot, D, R, L, eta=0.9, grassmann_metric=m
+            )
         )
 
 fig, ax = plt.subplots(figsize=(7, 4))
