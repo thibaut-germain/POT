@@ -295,7 +295,7 @@ def proximal_bregman_log_plan_batch(
     a=None,
     b=None,
     nx=None,
-    reg=1e-1,
+    reg=1e-2,
     max_iter=10000,
     tol=1e-5,
     inner_iter=1,
@@ -317,7 +317,7 @@ def proximal_bregman_log_plan_batch(
     The optimal transport plans are computed iteratively with a proximal point method based on a Bregman divergence where each iteration involves solving a Bregman projection problem: 
     
     .. math::
-        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{reg} * \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + \textit{reg} * \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
+        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{reg} \cdot \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + \textit{reg} \cdot \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
     
     Denoting :math:`\mathbf{K}^{(k)} =  - \mathbf{C} / \textit{reg} + \log \mathbf{T}^{(k)}`, the affinity matrix at iteration :math:`k`, the Bregman projection problem is solved in the log-domain with a finite number of inner iterations :math:`\text{inner\_iter}`, i.e., the dual variables :math:`\mathbf{u}` and :math:`\mathbf{v}` are updated as follows:
 
