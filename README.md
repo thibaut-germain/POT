@@ -470,3 +470,6 @@ Artificial Intelligence.
 [89] Tipping, M.E. & Bishop, C.M. (1999). [Probabilistic principal component analysis]. Journal of the Royal Statistical Society Series B: Statistical Methodology 61.3 (1999): 611-622.
 
 [90] Genans, F., Godichon-Baggioni, A., Vialard, F. X., & Wintenberger, O. (2025). [Decreasing Entropic Regularization Averaged Gradient for Semi-Discrete Optimal Transport](https://proceedings.neurips.cc/paper_files/paper/2025/file/d7efa12e98f5e0dd8b4f48cd60b4e3aa-Paper-Conference.pdf). Advances in Neural Information Processing Systems, 38, 146913-146949.
+
+[91] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
+[A fast proximal point method for computing exact wasserstein distance.](https://proceedings.mlr.press/v115/xie20b/xie20b.pdf) In Uncertainty in artificial intelligence (pp. 433-453). PMLR.

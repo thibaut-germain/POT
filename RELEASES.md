@@ -39,6 +39,7 @@ This new release adds support for sparse cost matrices and a new lazy exact OT s
 - Fix docstrings for `lowrank_gromov_wasserstein_samples` and `lowrank_sinkhorn` (PR #823)
 - Reorganize all tests per backend (PR #828)
 - Update sgot cost function and example (PR #830)
+- Implemented batch proximal point solver for OT problems `ot.batch.proximal_bregman_log_plan_batch` function and updated wrapper functions `ot.batch.solve_batch` and `ot.batch.solve_sample_batch` (PR #832)
 
 
 #### Closed issues

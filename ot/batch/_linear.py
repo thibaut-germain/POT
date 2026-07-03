@@ -261,7 +261,7 @@ def solve_batch(
             & \mathbf{T} \geq 0
         \end{aligned}
 
-    The problem is solved with either a proximal point method :ref:`[1] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method aims to solve the exact optimal transport problem leading to sparser transport plans. The choice of solver depends on the value of `reg` and `solver`. By default, the proximal point method is used. The Sinkhorn algorithm is only used when `reg` is greater than 0 and `solver='sinkhorn' or `log_sinkhorn'`. In any other case, the proximal point method is used, i.e. whenever `reg` is None or 0 or `solver='proximal'`. 
+    The problem is solved with either a proximal point method :ref:`[91] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method aims to solve the exact optimal transport problem leading to sparser transport plans. The choice of solver depends on the value of `reg` and `solver`. By default, the proximal point method is used. The Sinkhorn algorithm is only used when `reg` is greater than 0 and `solver='sinkhorn' or `log_sinkhorn'`. In any other case, the proximal point method is used, i.e. whenever `reg` is None or 0 or `solver='proximal'`. 
 
     Parameters
     ----------
@@ -329,7 +329,7 @@ def solve_batch(
     .. _references-batch-solver:
     Reference
     ----------
-    .. [1] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
+    .. [91] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
     A fast proximal point method for computing exact wasserstein distance.
     In Uncertainty in artificial intelligence (pp. 433-453). PMLR.
 
