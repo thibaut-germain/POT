@@ -13,6 +13,7 @@ many problems in parallel on CPU or GPU (even more efficient on GPU).
 """
 
 # Author: Paul Krzakala <paul.krzakala@gmail.com>
+#         Thibaut Germain <thibaut.germain.pro@gmail.com>
 # License: MIT License
 
 # sphinx_gallery_thumbnail_number = 1
@@ -75,19 +76,37 @@ for i in range(n_problems):
 #    This is simple but inefficient for large batches.
 #
 # Instead, you can use :func:`ot.batch.solve_batch`, which solves all
-# problems in parallel.
+# problems in parallel. Several solvers are available: ["sinkhorn", "log_sinkhorn"]
+# which solve the entropic regularized OT problem, and ["proximal"] which
+# solves the classical OT problem using a proximal point method. By default,
+# the proximal solver is used, but you can change it with the `solver` argument.
 
 reg = 1.0
 max_iter = 100
 tol = 1e-3
 
-# Naive approach
+# Classical OT problem
+## Naive approach
+results_values_list = []
+for i in range(n_problems):
+    res = ot.solve(M_list[i], reg=None, max_iter=max_iter, tol=tol)
+    results_values_list.append(res.value_linear)
+
+## Batched approach
+results_batch = ot.solve_batch(M=M_batch, reg=None, max_iter=max_iter, tol=tol)
+results_values_batch = results_batch.value_linear
+
+assert np.allclose(np.array(results_values_list), results_values_batch, atol=tol * 10)
+
+
+# Entropic regularized OT problem
+## Naive approach
 results_values_list = []
 for i in range(n_problems):
     res = ot.solve(M_list[i], reg=reg, max_iter=max_iter, tol=tol, reg_type="entropy")
     results_values_list.append(res.value_linear)
 
-# Batched approach
+## Batched approach
 results_batch = ot.solve_batch(
     M=M_batch, reg=reg, max_iter=max_iter, tol=tol, reg_type="entropy"
 )

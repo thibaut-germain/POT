@@ -244,7 +244,7 @@ def solve_batch(
     tol=1e-5,
     solver="proximal",
     inner_iter=1,
-    inner_reg=1e-2,
+    inner_reg=1e-1,
     reg_type="entropy",
     grad="envelope",
 ):
@@ -282,7 +282,7 @@ def solve_batch(
     inner_iter : int
         Number of inner Bregman iterations for the proximal solver. Default is 1.
     inner_reg : float
-        Regularization parameter for the inner Bregman iterations in the proximal solver. Default is 1e-2.
+        Regularization parameter for the inner Bregman iterations in the proximal solver. Default is 1e-1.
     reg_type : str, optional
         Type of regularization :math:`R`  either "KL", or "entropy". Only used with Sinkhorn solver. Default is "entropy".
     grad : str, optional
@@ -344,7 +344,9 @@ def solve_batch(
         "sinkhorn",
     ], f"Unknown solver: {solver}"
 
-    use_sinkhorn = solver in ["log_sinkhorn", "sinkhorn"] and reg > 0
+    use_sinkhorn = (
+        solver in ["log_sinkhorn", "sinkhorn"] and reg is not None and reg > 0
+    )
 
     nx = get_backend(a, b, M)
 
@@ -372,7 +374,7 @@ def solve_batch(
             a,
             b,
             nx=nx,
-            reg=inner_reg,
+            inner_reg=inner_reg,
             max_iter=max_iter,
             tol=tol,
             inner_iter=inner_iter,
@@ -396,6 +398,8 @@ def solve_batch(
             ref = nx.einsum("bi,bj->bij", a, b)
             kl = nx.sum(T * nx.log(T / ref + 1e-16), axis=(1, 2))
             value = value_linear + reg * kl
+    else:
+        value = value_linear
     log = {"n_iter": out["n_iters"]}
 
     res = OTResult(

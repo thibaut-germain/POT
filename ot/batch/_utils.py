@@ -306,7 +306,7 @@ def proximal_bregman_log_plan_batch(
     a=None,
     b=None,
     nx=None,
-    reg=1e-2,
+    inner_reg=1e-1,
     max_iter=10000,
     tol=1e-5,
     inner_iter=1,
@@ -328,9 +328,9 @@ def proximal_bregman_log_plan_batch(
     The optimal transport plans are computed iteratively with a proximal point method based on a Bregman divergence where each iteration involves solving a Bregman projection problem: 
     
     .. math::
-        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{reg} \cdot \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + \textit{reg} \cdot \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
+        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{inner\_reg} \cdot \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + \textit{inner\_reg} \cdot \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
     
-    Denoting :math:`\mathbf{K}^{(k)} =  - \mathbf{C} / \textit{reg} + \log \mathbf{T}^{(k)}`, the affinity matrix at iteration :math:`k`, the Bregman projection problem is solved in the log-domain with a finite number of inner iterations :math:`\text{inner\_iter}`, i.e., the dual variables :math:`\mathbf{u}` and :math:`\mathbf{v}` are updated as follows:
+    Denoting :math:`\mathbf{K}^{(k)} =  - \mathbf{C} / \textit{inner\_reg} + \log \mathbf{T}^{(k)}`, the affinity matrix at iteration :math:`k`, the Bregman projection problem is solved in the log-domain with a finite number of inner iterations :math:`\text{inner\_iter}`, i.e., the dual variables :math:`\mathbf{u}` and :math:`\mathbf{v}` are updated as follows:
 
     .. math::
         \mathbf{u}^{(i+1)} = \log(\mathbf{a}) - \text{LSE}(\mathbf{K}^{(k)} + \mathbf{v}^{(i)})
@@ -352,7 +352,9 @@ def proximal_bregman_log_plan_batch(
     max_iter : int, optional
         Maximum number of iterations.
     inner_iter : int, optional
-        Number of inner iterations for updating the dual variables u and v.
+        Number of inner iterations for updating the dual variables u and v. Default is 1.
+    inner_reg : float, optional
+        Regularization parameter for the Bregman divergence. Default is 1e-1.
     tol : float, optional
         Tolerance for convergence. The solver stops when the maximum change in
         the dual variables is below this value.
@@ -402,7 +404,7 @@ def proximal_bregman_log_plan_batch(
     u = nx.zeros((B, n), type_as=C)
     v = nx.zeros((B, m), type_as=C)
 
-    K = -C / reg
+    K = -C / inner_reg
     loga = nx.log(a)
     logb = nx.log(b)
 

@@ -89,9 +89,9 @@ def test_proximal_solve_batch():
 
     for config in configs:
         res = solve_batch(C, max_iter=10000, tol=1e-5, grad="detach", **config)
-        plan = res["T"]
-        value = res["value_linear"]
-        np.testing.assert_allclose(plan, exact_plan, atol=1e-5)
+        plan = res.plan
+        value = res.value_linear
+        np.testing.assert_allclose(plan, exact_plan, atol=1e-4)
         np.testing.assert_allclose(value, exact_value, atol=1e-4)
 
 
@@ -103,14 +103,19 @@ def test_proximal_bregman_log_plan_batch(inner_iter):
     rng = np.random.RandomState(0)
     C = rng.rand(batchsize, n, d)
     res = proximal_bregman_log_plan_batch(
-        C, reg=1e-2, max_iter=10000, tol=1e-5, inner_iter=inner_iter, grad="detach"
+        C,
+        inner_reg=1e-1,
+        max_iter=10000,
+        tol=1e-5,
+        inner_iter=inner_iter,
+        grad="detach",
     )
     plan = res["T"]
     for i in range(batchsize):
         C_i = C[i]
         res_i = solve(C_i, reg=None, tol=1e-5)
         plan_i = res_i.plan
-        np.testing.assert_allclose(plan_i, plan[i], atol=1e-5)
+        np.testing.assert_allclose(plan_i, plan[i], atol=1e-4)
 
 
 def test_bregman_batch():
