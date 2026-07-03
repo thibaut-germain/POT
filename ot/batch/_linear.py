@@ -5,6 +5,7 @@ Batch operations for linear optimal transport.
 
 # Author: Remi Flamary <remi.flamary@unice.fr>
 #         Paul Krzakala <paul.krzakala@gmail.com>
+#         Thibaut Germain <thibaut.germain.pro@gmail.com>
 #
 # License: MIT License
 

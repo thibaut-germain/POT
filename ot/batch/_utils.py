@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+Utility functions for batch operations in optimal transport.
+"""
+
+# Author: Remi Flamary <remi.flamary@unice.fr>
+#         Paul Krzakala <paul.krzakala@gmail.com>
+#         Thibaut Germain <thibaut.germain.pro@gmail.com>
+#
+# License: MIT License
+
 from ot.backend import get_backend
 
 

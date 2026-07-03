@@ -3,6 +3,7 @@
 # Author: Remi Flamary <remi.flamary@unice.fr>
 #         Paul Krzakala <paul.krzakala@gmail.com>
 #         Sonia Mazelet <sonia.mazelet@polytechnique.edu>
+#         Thibaut Germain <thibaut.germain.pro@gmail.com>
 #
 # License: MIT License
 
@@ -15,6 +16,7 @@ from ot.batch import (
     loss_linear_batch,
     bregman_projection_batch,
     bregman_log_projection_batch,
+    proximal_bregman_log_plan_batch,
 )
 
 from ot import solve
@@ -24,7 +26,7 @@ from ot.backend import torch
 
 @pytest.mark.parametrize("solver", ["sinkhorn", "log_sinkhorn"])
 @pytest.mark.parametrize("reg_type", ["kl", "entropy"])
-def test_solve_batch(solver, reg_type):
+def test_sinkhorn_solve_batch(solver, reg_type):
     """Check that solve_batch gives the same results as solve for each instance in the batch."""
     batchsize = 4
     n = 16
@@ -61,6 +63,56 @@ def test_solve_batch(solver, reg_type):
         np.testing.assert_allclose(value_i, values_batch[i], atol=1e-4)
 
 
+def test_proximal_solve_batch():
+    """Check that proximal_bregman_log_plan_batch gives the same results as solve for each instance in the batch."""
+    batchsize = 3
+    n = 5
+    d = 7
+    rng = np.random.RandomState(0)
+    C = rng.rand(batchsize, n, d)
+
+    exact_plan = np.zeros((batchsize, n, d))
+    exact_value = np.zeros(batchsize)
+    for i in range(batchsize):
+        C_i = C[i]
+        res_i = solve(C_i, reg=None, tol=1e-5)
+        exact_plan[i] = res_i.plan
+        exact_value[i] = res_i.value_linear
+
+    configs = [
+        {"reg": None, "solver": "proximal"},
+        {"reg": None, "solver": "log_sinkhorn"},
+        {"reg": None, "solver": "sinkhorn"},
+        {"reg": 0, "solver": "proximal"},
+        {"reg": 1e-2, "solver": "proximal"},
+    ]
+
+    for config in configs:
+        res = solve_batch(C, max_iter=10000, tol=1e-5, grad="detach", **config)
+        plan = res["T"]
+        value = res["value_linear"]
+        np.testing.assert_allclose(plan, exact_plan, atol=1e-5)
+        np.testing.assert_allclose(value, exact_value, atol=1e-4)
+
+
+@pytest.mark.parametrize("inner_iter", [1, 5, 10])
+def test_proximal_bregman_log_plan_batch(inner_iter):
+    batchsize = 3
+    n = 5
+    d = 7
+    rng = np.random.RandomState(0)
+    C = rng.rand(batchsize, n, d)
+    res = proximal_bregman_log_plan_batch(
+        C, reg=1e-2, max_iter=10000, tol=1e-5, inner_iter=inner_iter, grad="detach"
+    )
+    plan = res["T"]
+    for i in range(batchsize):
+        C_i = C[i]
+        res_i = solve(C_i, reg=None, tol=1e-5)
+        plan_i = res_i.plan
+        np.testing.assert_allclose(plan_i, plan[i], atol=1e-5)
+
+
 def test_bregman_batch():
     batchsize = 4
     d = 2
@@ -78,7 +130,8 @@ def test_bregman_batch():
 
 
 @pytest.mark.parametrize("metric", ["sqeuclidean", "euclidean", "minkowski", "kl"])
-def test_metrics(metric):
+@pytest.mark.parametrize("solver", ["proximal", "sinkhorn", "log_sinkhorn"])
+def test_sample_solve_batch(metric, solver):
     """Check that all functions run without error."""
 
     batchsize = 2
@@ -93,11 +146,10 @@ def test_metrics(metric):
     is_positive = M >= 0
     np.testing.assert_equal(is_positive.all(), True)
 
-    # Solve batch
-    res = solve_batch(M, reg=0.1, max_iter=10, tol=1e-5)
-
     # Solve sample batch
-    res = solve_sample_batch(X, X, reg=0.1, max_iter=10, tol=1e-5, metric=metric)
+    res = solve_sample_batch(
+        X, X, reg=0.1, max_iter=10, tol=1e-5, metric=metric, solver=solver
+    )
 
     # Compute loss
     loss = res.value_linear  # loss given by solver
@@ -116,7 +168,7 @@ def test_gradients_torch(grad):
     batchsize = 2
     n = 4
     d = 2
-    for solver in ["sinkhorn", "log_sinkhorn"]:
+    for solver in ["proximal", "sinkhorn", "log_sinkhorn"]:
         X = torch.randn((batchsize, n, d), requires_grad=True)
         M = dist_batch(X, X)
         res = solve_batch(M, reg=0.1, max_iter=10, tol=1e-5, grad=grad, solver=solver)
@@ -140,8 +192,9 @@ def test_backend(nx):
     X = np.random.randn(batchsize, n, d)
     X = nx.from_numpy(X)
     M = dist_batch(X, X)
-    solve_batch(M, reg=0.1, max_iter=10, tol=1e-5)
-    solve_sample_batch(X, X, reg=0.1, max_iter=10, tol=1e-5)
+    for solver in ["proximal", "sinkhorn", "log_sinkhorn"]:
+        solve_batch(M, reg=0.1, max_iter=10, tol=1e-5, solver=solver)
+        solve_sample_batch(X, X, reg=0.1, max_iter=10, tol=1e-5, solver=solver)
 
 
 def test_metric_default_parameters():
