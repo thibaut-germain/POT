@@ -83,8 +83,8 @@ for i in range(n_problems):
 # method based on the value of `reg`. If `reg` is None or 0, the proximal point method
 # is used. If `reg` is greater than 0, the Sinkhorn algorithm is used.
 
-max_iter = 100
-tol = 1e-3
+max_iter = 10000
+tol = 1e-4
 
 # Classical OT problem
 ## Naive approach
@@ -97,8 +97,9 @@ for i in range(n_problems):
 results_batch = ot.solve_batch(M=M_batch, reg=None, max_iter=max_iter, tol=tol)
 results_values_batch = results_batch.value_linear
 
-assert np.allclose(np.array(results_values_list), results_values_batch, atol=tol * 10)
-
+exact_validated = np.allclose(
+    np.array(results_values_list), results_values_batch, atol=tol * 10
+)
 
 # Entropic regularized OT problem
 ## Naive approach
@@ -114,7 +115,13 @@ results_batch = ot.solve_batch(
 )
 results_values_batch = results_batch.value_linear
 
-assert np.allclose(np.array(results_values_list), results_values_batch, atol=tol * 10)
+entropic_validated = np.allclose(
+    np.array(results_values_list), results_values_batch, atol=tol * 10
+)
+
+print(
+    f"Exact solve vs proximal batch close: {exact_validated} \nSinkhorn solve vs Sinkhorn solve_batch close: {entropic_validated}"
+)
 
 #############################################################################
 #

@@ -251,7 +251,7 @@ def solve_batch(
     tol=1e-5,
     method="auto",
     inner_iter=1,
-    inner_reg=1e-1,
+    inner_reg=1e-3,
     reg_type="entropy",
     grad="envelope",
 ):
@@ -268,7 +268,7 @@ def solve_batch(
             & \mathbf{T} \geq 0
         \end{aligned}
 
-    The problem is solved with either a proximal point method :ref:`[91] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method can solve both regularized and unregularized optimal transport problems. When `method` is set to 'auto', the function automatically selects the appropriate method based on the value of `reg`. if `reg` is None or 0, the proximal point method is used. If `reg` is greater than 0, the Sinkhorn algorithm is used.
+    The problem is solved with either a proximal point method :ref:`[92] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method can solve both regularized and unregularized optimal transport problems. When `method` is set to 'auto', the function automatically selects the appropriate method based on the value of `reg`. if `reg` is None or 0, the proximal point method is used. If `reg` is greater than 0, the Sinkhorn algorithm is used.
 
     Parameters
     ----------
@@ -289,7 +289,7 @@ def solve_batch(
     inner_iter : int
         Number of inner Bregman iterations for the proximal method. Default is 1.
     inner_reg : float
-        Regularization parameter for the inner Bregman iterations in the proximal method. Default is 1e-1.
+        Regularization parameter for the inner Bregman iterations in the proximal method. Default is 1e-3.
     reg_type : str, optional
         Type of regularization :math:`R`  either "KL", or "entropy". Default is "entropy".
     grad : str, optional
@@ -336,7 +336,7 @@ def solve_batch(
     .. _references-batch-solver:
     Reference
     ----------
-    .. [91] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
+    .. [92] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
     A fast proximal point method for computing exact wasserstein distance.
     In Uncertainty in artificial intelligence (pp. 433-453). PMLR.
 
@@ -448,7 +448,7 @@ def solve_sample_batch(
     tol=1e-5,
     method="auto",
     inner_iter=1,
-    inner_reg=1e-2,
+    inner_reg=1e-3,
     reg_type="entropy",
     grad="envelope",
 ):
@@ -482,7 +482,7 @@ def solve_sample_batch(
     inner_iter : int
         Number of inner Bregman iterations for the proximal method. Default is 1.
     inner_reg : float
-        Regularization parameter for the inner Bregman iterations in the proximal method. Default is 1e-2.
+        Regularization parameter for the inner Bregman iterations in the proximal method. Default is 1e-3.
     reg_type : str, optional
         Type of regularization :math:`R`  either "KL", or "entropy". Default is "entropy".
     grad : str, optional

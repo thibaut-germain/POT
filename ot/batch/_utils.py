@@ -307,14 +307,14 @@ def proximal_bregman_log_plan_batch(
     b=None,
     nx=None,
     reg=None,
-    inner_reg=1e-2,
+    inner_reg=1e-3,
     max_iter=10000,
     tol=1e-5,
     inner_iter=1,
     grad="detach",
 ):
     r"""
-    Returns optimal transport plans for a batch of cost matrices :math:`\mathbf{C}` using a Bregman divergence based proximal point method :ref:`[91] <references-OT-bregman-proximal-point>`.
+    Returns optimal transport plans for a batch of cost matrices :math:`\mathbf{C}` using a Bregman divergence based proximal point method :ref:`[92] <references-OT-bregman-proximal-point>`.
 
     This function solves the following optimization problem:
 
@@ -355,7 +355,7 @@ def proximal_bregman_log_plan_batch(
     inner_iter : int, optional
         Number of inner iterations for updating the dual variables u and v. Default is 1.
     inner_reg : float, optional
-        Regularization parameter for the Bregman divergence. Default is 1e-1.
+        Regularization parameter for the Bregman divergence. Default is 1e-3.
     tol : float, optional
         Tolerance for convergence. The solver stops when the maximum change in
         the dual variables is below this value.
@@ -387,7 +387,7 @@ def proximal_bregman_log_plan_batch(
     .. _references-OT-bregman-proximal-point:
     Reference
     ----------
-    .. [91] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
+    .. [92] Xie, Y., Wang, X., Wang, R., & Zha, H. (2020, August). 
     A fast proximal point method for computing exact wasserstein distance.
     In Uncertainty in artificial intelligence (pp. 433-453). PMLR.
     """
