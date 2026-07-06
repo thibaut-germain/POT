@@ -19,6 +19,13 @@ from ._utils import (
 )
 
 
+solve_batch_method_lst = ["auto", "proximal", "log_sinkhorn", "sinkhorn"]
+
+solve_batch_reg_type_lst = ["kl", "entropy"]
+
+solve_batch_grad_lst = ["detach", "autodiff", "last_step", "envelope"]
+
+
 def dist_lp_batch(X, Y, p=2, q=1, nx=None):
     r"""Computes the cost matrix for a batch of samples using the Lp norm.
 
@@ -242,7 +249,7 @@ def solve_batch(
     b=None,
     max_iter=1000,
     tol=1e-5,
-    solver="proximal",
+    method="auto",
     inner_iter=1,
     inner_reg=1e-1,
     reg_type="entropy",
@@ -261,14 +268,14 @@ def solve_batch(
             & \mathbf{T} \geq 0
         \end{aligned}
 
-    The problem is solved with either a proximal point method :ref:`[91] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method aims to solve the exact optimal transport problem leading to sparser transport plans. The choice of solver depends on the value of `reg` and `solver`. By default, the proximal point method is used. The Sinkhorn algorithm is only used when `reg` is greater than 0 and `solver='sinkhorn' or `log_sinkhorn'`. In any other case, the proximal point method is used, i.e. whenever `reg` is None or 0 or `solver='proximal'`. 
+    The problem is solved with either a proximal point method :ref:`[91] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method can solve both regularized and unregularized optimal transport problems. When `method` is set to 'auto', the function automatically selects the appropriate method based on the value of `reg`. if `reg` is None or 0, the proximal point method is used. If `reg` is greater than 0, the Sinkhorn algorithm is used.
 
     Parameters
     ----------
     M : array-like, shape (B, ns, nt)
         Cost matrix
     reg : float
-        Regularization parameter for entropic regularization. If None or 0, no regularization is applied, proximal solver is used. Default is None.
+        Regularization parameter. Default is None.
     a : array-like, shape (B, ns)
         Source distribution (optional). If None, uniform distribution is used.
     b : array-like, shape (B, nt)
@@ -277,19 +284,19 @@ def solve_batch(
         Maximum number of iterations
     tol : float
         Tolerance for convergence
-    solver: str
-        Solver to use, either 'proximal', 'log_sinkhorn' or 'sinkhorn'. Default is 'proximal'.
+    method: str
+        Method to use, either 'auto', 'proximal', 'log_sinkhorn' or 'sinkhorn'. Default is 'auto'.
     inner_iter : int
-        Number of inner Bregman iterations for the proximal solver. Default is 1.
+        Number of inner Bregman iterations for the proximal method. Default is 1.
     inner_reg : float
-        Regularization parameter for the inner Bregman iterations in the proximal solver. Default is 1e-1.
+        Regularization parameter for the inner Bregman iterations in the proximal method. Default is 1e-1.
     reg_type : str, optional
-        Type of regularization :math:`R`  either "KL", or "entropy". Only used with Sinkhorn solver. Default is "entropy".
+        Type of regularization :math:`R`  either "KL", or "entropy". Default is "entropy".
     grad : str, optional
         Type of gradient computation, either 'detach', 'autodiff', 'last_step' or 'envelope'. 
-        'detach' does not compute the gradients for the Sinkhorn solver. 
+        'detach' does not compute the gradients. 
         'autodiff' provides gradients of all outputs (`plan, value, value_linear`) but with important memory cost. 
-        'last_step' provides gradients of all outputs (`plan, value, value_linear`) only for the last solver iteration, useful for memory saving.
+        'last_step' provides gradients of all outputs (`plan, value, value_linear`) only for the last method iteration, useful for memory saving.
         'envelope' provides gradients only for `value`. 
         Default is 'envelope'.
        
@@ -313,9 +320,9 @@ def solve_batch(
     >>> X = np.random.randn(5, 10, 3)  # 5 batches of 10 samples in 3D
     >>> Y = np.random.randn(5, 15, 3)  # 5 batches of 15 samples in 3D
     >>> M = dist_batch(X, Y, metric="euclidean")  # Compute cost matrices
-    >>> p_result = solve_batch(M) # Uses proximal solver
+    >>> p_result = solve_batch(M) # Uses proximal method
     >>> reg = 0.1
-    >>> s_result = solve_batch(M, reg, solver="log_sinkhorn") # Uses Sinkhorn solver
+    >>> s_result = solve_batch(M, reg, method="log_sinkhorn") # Uses Sinkhorn method
     >>> s_result.plan.shape  # Optimal transport plans for each batch
     (5, 10, 15)
     >>> s_result.value.shape  # Optimal transport values for each batch
@@ -324,7 +331,7 @@ def solve_batch(
     See Also
     --------
     ot.batch.dist_batch : batched cost matrix computation for computing M.
-    ot.solve : non-batched version of the OT solver.
+    ot.solve : non-batched version of the solve_batch function.
 
     .. _references-batch-solver:
     Reference
@@ -338,15 +345,31 @@ def solve_batch(
     Systems (NIPS) 26, 2013
     """
 
-    assert solver in [
-        "proximal",
-        "log_sinkhorn",
-        "sinkhorn",
-    ], f"Unknown solver: {solver}"
+    if method not in solve_batch_method_lst:
+        raise ValueError(
+            f"Unknown method: {method}. Must be one of {solve_batch_method_lst}."
+        )
 
-    use_sinkhorn = (
-        solver in ["log_sinkhorn", "sinkhorn"] and reg is not None and reg > 0
-    )
+    if reg_type not in solve_batch_reg_type_lst:
+        raise ValueError(
+            f"Unknown reg_type: {reg_type}. Must be one of {solve_batch_reg_type_lst}."
+        )
+
+    if grad not in solve_batch_grad_lst:
+        raise ValueError(
+            f"Unknown grad: {grad}. Must be one of {solve_batch_grad_lst}."
+        )
+
+    if method in ["sinkhorn", "log_sinkhorn"] and (reg is None or reg <= 0):
+        raise ValueError(
+            "Sinkhorn methods require a strictly positive reg parameter. Please provide a valid reg value."
+        )
+
+    if method == "auto":
+        if reg is None or reg == 0:
+            method = "proximal"
+        else:
+            method = "log_sinkhorn"
 
     nx = get_backend(a, b, M)
 
@@ -357,23 +380,23 @@ def solve_batch(
     if b is None:
         b = nx.ones((B, m), type_as=M) / m
 
-    if use_sinkhorn:
-        if solver == "log_sinkhorn":
-            K = -M / reg
-            out = bregman_log_projection_batch(
-                K, a, b, nx=nx, max_iter=max_iter, tol=tol, grad=grad
-            )
-        if solver == "sinkhorn":
-            K = nx.exp(-M / reg)
-            out = bregman_projection_batch(
-                K, a, b, nx=nx, max_iter=max_iter, tol=tol, grad=grad
-            )
-    else:
+    if method == "log_sinkhorn":
+        K = -M / reg
+        out = bregman_log_projection_batch(
+            K, a, b, nx=nx, max_iter=max_iter, tol=tol, grad=grad
+        )
+    if method == "sinkhorn":
+        K = nx.exp(-M / reg)
+        out = bregman_projection_batch(
+            K, a, b, nx=nx, max_iter=max_iter, tol=tol, grad=grad
+        )
+    if method == "proximal":
         out = proximal_bregman_log_plan_batch(
             M,
             a,
             b,
             nx=nx,
+            reg=reg,
             inner_reg=inner_reg,
             max_iter=max_iter,
             tol=tol,
@@ -390,14 +413,13 @@ def solve_batch(
         T = nx.detach(T)
 
     value_linear = loss_linear_batch(M, T)
-    if use_sinkhorn:
-        if reg_type.lower() == "entropy":
-            entr = -entropy_batch(T, nx=nx)
-            value = value_linear + reg * entr
-        elif reg_type.lower() == "kl":
-            ref = nx.einsum("bi,bj->bij", a, b)
-            kl = nx.sum(T * nx.log(T / ref + 1e-16), axis=(1, 2))
-            value = value_linear + reg * kl
+    if reg_type == "entropy" and reg is not None:
+        entr = -entropy_batch(T, nx=nx)
+        value = value_linear + reg * entr
+    elif reg_type == "kl" and reg is not None:
+        ref = nx.einsum("bi,bj->bij", a, b)
+        kl = nx.sum(T * nx.log(T / ref + 1e-16), axis=(1, 2))
+        value = value_linear + reg * kl
     else:
         value = value_linear
     log = {"n_iter": out["n_iters"]}
@@ -424,29 +446,29 @@ def solve_sample_batch(
     p=2,
     max_iter=1000,
     tol=1e-5,
-    solver="proximal",
+    method="auto",
     inner_iter=1,
     inner_reg=1e-2,
     reg_type="entropy",
     grad="envelope",
 ):
     r"""
-    Return solutions of a batch of discrete optimal transport problems in a :any:`OTResult` object computed for source and target samples.
+    Return solutions of a batch of discrete optimal transport problems in a :any:`OTResult` object computed from batches of source and target samples.
 
-    The problem is solved with either a proximal point method :ref:`[1] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method aims to solve the exact optimal transport problem leading to sparser transport plans. The choice of solver depends on the value of `reg` and `solver`. By default, the proximal point method is used. The Sinkhorn algorithm is only used when `reg` is greater than 0 and `solver='sinkhorn' or `log_sinkhorn'`. In any other case, the proximal point method is used, i.e. whenever `reg` is None or 0 or `solver='proximal'`.
+    The problem is solved with either a proximal point method :ref:`[91] <references-batch-solver>` or a Sinkhorn algorithm :ref:`[2] <references-batch-solver>`. Unlike the Sinkhorn algorithm, which assumes a regularization term, the proximal point method can solve both regularized and unregularized optimal transport problems. When `method` is set to 'auto', the function automatically selects the appropriate method based on the value of `reg`. if `reg` is None or 0, the proximal point method is used. If `reg` is greater than 0, the Sinkhorn algorithm is used.
 
     Parameters
     ----------
-    Xa : array-like, shape (B, ns, d)
+    X_a : array-like, shape (B, ns, d)
         Samples from source distribution
-    Xb : array-like, shape (B, nt, d)
+    X_b : array-like, shape (B, nt, d)
         Samples from target distribution
     metric : str, optional
         'sqeuclidean', 'euclidean', 'minkowski' or 'kl'
     p : float, optional
         p-norm for the Minkowski metrics. Default value is 2.
     reg : float
-        Regularization parameter for entropic regularization. If None or 0, no regularization is applied, proximal solver is used. Default is None.
+        Regularization parameter. Default is None.
     a : array-like, shape (B, ns)
         Source distribution (optional). If None, uniform distribution is used.
     b : array-like, shape (B, nt)
@@ -455,19 +477,19 @@ def solve_sample_batch(
         Maximum number of iterations
     tol : float
         Tolerance for convergence
-    solver: str
-        Solver to use, either 'proximal', 'log_sinkhorn' or 'sinkhorn'. Default is 'proximal'.
+    method: str
+        Method to use, either 'auto', 'proximal', 'log_sinkhorn' or 'sinkhorn'. Default is 'auto'.
     inner_iter : int
-        Number of inner Bregman iterations for the proximal solver. Default is 1.
+        Number of inner Bregman iterations for the proximal method. Default is 1.
     inner_reg : float
-        Regularization parameter for the inner Bregman iterations in the proximal solver. Default is 1e-2.
+        Regularization parameter for the inner Bregman iterations in the proximal method. Default is 1e-2.
     reg_type : str, optional
-        Type of regularization :math:`R`  either "KL", or "entropy". Only used with Sinkhorn solver. Default is "entropy".
+        Type of regularization :math:`R`  either "KL", or "entropy". Default is "entropy".
     grad : str, optional
         Type of gradient computation, either 'detach', 'autodiff', 'last_step' or 'envelope'.
-        'detach' does not compute the gradients for the Sinkhorn solver.
+        'detach' does not compute the gradients.
         'autodiff' provides gradients of all outputs (`plan, value, value_linear`) but with important memory cost.
-        'last_step' provides gradients of all outputs (`plan, value, value_linear`) only for the last solver iteration, useful for memory saving.
+        'last_step' provides gradients of all outputs (`plan, value, value_linear`) only for the last method iteration, useful for memory saving.
         'envelope' provides gradients only for `value`.
         Default is 'envelope'.
 
@@ -485,10 +507,11 @@ def solve_sample_batch(
 
     See Also
     --------
-    ot.batch.solve_batch : solver for computing the optimal T from arbitrary cost matrix M.
+    ot.batch.solve_batch : function for computing the optimal T from arbitrary cost matrix M.
     """
 
     M = dist_batch(X_a, X_b, metric=metric, p=p)
+
     return solve_batch(
         M,
         reg,
@@ -496,7 +519,7 @@ def solve_sample_batch(
         b=b,
         max_iter=max_iter,
         tol=tol,
-        solver=solver,
+        method=method,
         inner_iter=inner_iter,
         inner_reg=inner_reg,
         reg_type=reg_type,

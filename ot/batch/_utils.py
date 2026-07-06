@@ -306,7 +306,8 @@ def proximal_bregman_log_plan_batch(
     a=None,
     b=None,
     nx=None,
-    inner_reg=1e-1,
+    reg=None,
+    inner_reg=1e-2,
     max_iter=10000,
     tol=1e-5,
     inner_iter=1,
@@ -319,7 +320,7 @@ def proximal_bregman_log_plan_batch(
 
     .. math::
         \begin{aligned}
-            \mathbf{T} = \mathop{\arg \min}_\mathbf{T} \quad & \langle \mathbf{T}, \mathbf{C} \rangle_F \\
+            \mathbf{T} = \mathop{\arg \min}_\mathbf{T} \quad & \langle \mathbf{T}, \mathbf{C} \rangle_F + \textit{reg} \cdot \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j} \\
             \text{s.t.} \quad & \mathbf{T} \mathbf{1} = \mathbf{a} \\
             & \mathbf{T}^T \mathbf{1} = \mathbf{b} \\
             & \mathbf{T} \geq 0
@@ -328,9 +329,9 @@ def proximal_bregman_log_plan_batch(
     The optimal transport plans are computed iteratively with a proximal point method based on a Bregman divergence where each iteration involves solving a Bregman projection problem: 
     
     .. math::
-        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{inner\_reg} \cdot \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + \textit{inner\_reg} \cdot \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
+        \mathbf{T}^{(k+1)} = \mathop{\arg \min}_\mathbf{T} \quad  \langle \mathbf{C} - \textit{inner\_reg} \cdot \log \mathbf{T}^{(k)}, \mathbf{T} \rangle + (\textit{reg} + \textit{inner\_reg}) \cdot \sum_{i,j} \mathbf{T}_{i,j} \log \mathbf{T}_{i,j}
     
-    Denoting :math:`\mathbf{K}^{(k)} =  - \mathbf{C} / \textit{inner\_reg} + \log \mathbf{T}^{(k)}`, the affinity matrix at iteration :math:`k`, the Bregman projection problem is solved in the log-domain with a finite number of inner iterations :math:`\text{inner\_iter}`, i.e., the dual variables :math:`\mathbf{u}` and :math:`\mathbf{v}` are updated as follows:
+    Denoting :math:`\mathbf{K}^{(k)} =  - (\mathbf{C} + \textit{inner\_reg} \cdot \log \mathbf{T}^{(k)})/(\textit{reg} + \textit{inner\_reg})`, the affinity matrix at iteration :math:`k`, the Bregman projection problem is solved in the log-domain with a finite number of inner iterations :math:`\text{inner\_iter}`, i.e., the dual variables :math:`\mathbf{u}` and :math:`\mathbf{v}` are updated as follows:
 
     .. math::
         \mathbf{u}^{(i+1)} = \log(\mathbf{a}) - \text{LSE}(\mathbf{K}^{(k)} + \mathbf{v}^{(i)})
@@ -401,21 +402,23 @@ def proximal_bregman_log_plan_batch(
     if b is None:
         b = nx.ones((B, m)) / m
 
+    if reg is None:
+        reg = 0.0
+
     u = nx.zeros((B, n), type_as=C)
     v = nx.zeros((B, m), type_as=C)
 
-    K = -C / inner_reg
     loga = nx.log(a)
     logb = nx.log(b)
 
     if grad == "detach":
-        K = nx.detach(K)
+        C = nx.detach(C)
     elif grad == "last_step":
-        K_, K = K.clone(), nx.detach(K)
+        C_, C = C.clone(), nx.detach(C)
 
     log_T = nx.zeros(C.shape, type_as=C)
     for n_iters in range(max_iter):
-        K_proj = log_T + K
+        K_proj = -(C + inner_reg * log_T) / (reg + inner_reg)
         for _ in range(inner_iter):
             u = loga - nx.logsumexp(K_proj + v[:, None, :], axis=2)
             v = logb - nx.logsumexp(K_proj + u[:, :, None], axis=1)
@@ -430,7 +433,7 @@ def proximal_bregman_log_plan_batch(
                 break
 
     if grad == "last_step":
-        K_proj = log_T + K_
+        K_proj = -(C_ + inner_reg * log_T) / (reg + inner_reg)
         for _ in range(inner_iter):
             u = loga - nx.logsumexp(K_proj + v[:, None, :], axis=2)
             v = logb - nx.logsumexp(K_proj + u[:, :, None], axis=1)

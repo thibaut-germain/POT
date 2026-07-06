@@ -76,12 +76,13 @@ for i in range(n_problems):
 #    This is simple but inefficient for large batches.
 #
 # Instead, you can use :func:`ot.batch.solve_batch`, which solves all
-# problems in parallel. Several solvers are available: ["sinkhorn", "log_sinkhorn"]
-# which solve the entropic regularized OT problem, and ["proximal"] which
-# solves the classical OT problem using a proximal point method. By default,
-# the proximal solver is used, but you can change it with the `solver` argument.
+# problems in parallel. Several methods are available: ["sinkhorn", "log_sinkhorn"]
+# which solve regularized OT problems, and ["proximal"] which
+# solves regularized and unregularized OT problem using a proximal point scheme.
+# By default, the method is set to "auto" which automatically selects the appropriate
+# method based on the value of `reg`. If `reg` is None or 0, the proximal point method
+# is used. If `reg` is greater than 0, the Sinkhorn algorithm is used.
 
-reg = 1.0
 max_iter = 100
 tol = 1e-3
 
@@ -101,6 +102,7 @@ assert np.allclose(np.array(results_values_list), results_values_batch, atol=tol
 
 # Entropic regularized OT problem
 ## Naive approach
+reg = 1.0
 results_values_list = []
 for i in range(n_problems):
     res = ot.solve(M_list[i], reg=reg, max_iter=max_iter, tol=tol, reg_type="entropy")
