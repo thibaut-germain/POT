@@ -90,11 +90,11 @@ tol = 1e-4
 ## Naive approach
 results_values_list = []
 for i in range(n_problems):
-    res = ot.solve(M_list[i], reg=None, max_iter=max_iter, tol=tol)
+    res = ot.solve(M_list[i], max_iter=max_iter, tol=tol)
     results_values_list.append(res.value_linear)
 
 ## Batched approach
-results_batch = ot.solve_batch(M=M_batch, reg=None, max_iter=max_iter, tol=tol)
+results_batch = ot.solve_batch(M=M_batch, max_iter=max_iter, tol=tol)
 results_values_batch = results_batch.value_linear
 
 exact_validated = np.allclose(
